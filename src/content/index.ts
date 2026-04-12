@@ -5,6 +5,15 @@
 
 import type { InjectedMessage } from "../types";
 
+// Wrap all sendMessage calls to silently handle "Extension context invalidated"
+function safeSend(message: any) {
+  try {
+    chrome.runtime.sendMessage(message).catch(() => {});
+  } catch {
+    // Extension was reloaded or uninstalled — ignore
+  }
+}
+
 // Inject the page-level fetch interceptor
 function injectScript() {
   const script = document.createElement("script");
@@ -24,12 +33,12 @@ window.addEventListener("message", (event) => {
   if (data?.source !== "tinder-cleanup-injected") return;
 
   if (data.type === "ALIVE") {
-    chrome.runtime.sendMessage({ type: "CONTENT_SCRIPT_ALIVE" });
+    safeSend({ type: "CONTENT_SCRIPT_ALIVE" });
     return;
   }
 
   if (data.type === "MATCH_DELETED") {
-    chrome.runtime.sendMessage({
+    safeSend({
       type: "MATCH_DELETED",
       payload: { matchId: data.matchId },
     });
@@ -37,7 +46,7 @@ window.addEventListener("message", (event) => {
   }
 
   if (data.type === "AUTH_TOKEN") {
-    chrome.runtime.sendMessage({
+    safeSend({
       type: "AUTH_TOKEN",
       payload: {
         token: data.token,
@@ -50,7 +59,7 @@ window.addEventListener("message", (event) => {
   // Match data received
   const msg = data as InjectedMessage;
   if (msg.matches?.length) {
-    chrome.runtime.sendMessage({
+    safeSend({
       type: "MATCH_DATA",
       payload: msg.matches,
     });
@@ -58,11 +67,11 @@ window.addEventListener("message", (event) => {
 });
 
 // Clear stale match data on page load — Tinder will re-fetch everything
-chrome.runtime.sendMessage({ type: "CLEAR_MATCHES" });
+safeSend({ type: "CLEAR_MATCHES" });
 
 // Periodically ping background to signal we're alive
 setInterval(() => {
-  chrome.runtime.sendMessage({ type: "CONTENT_SCRIPT_ALIVE" });
+  safeSend({ type: "CONTENT_SCRIPT_ALIVE" });
 }, 30_000);
 
-chrome.runtime.sendMessage({ type: "CONTENT_SCRIPT_ALIVE" });
+safeSend({ type: "CONTENT_SCRIPT_ALIVE" });
