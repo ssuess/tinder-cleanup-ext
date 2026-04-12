@@ -2,6 +2,10 @@
 
 Chrome extension to mass-unmatch Tinder matches based on configurable rules.
 
+## Demo
+
+[![Tinder Cleanup demo](https://img.youtube.com/vi/ica90ZwWY6s/maxresdefault.jpg)](https://youtu.be/ica90ZwWY6s)
+
 ## Features
 
 - **Passive data capture** — reads match data from Tinder's own API responses, no extra API calls
