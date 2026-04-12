@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tinder Cleanup — Options</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #333;
+    }
+    h2 { color: #fd5068; margin-bottom: 4px; }
+    p.sub { color: #888; font-size: 13px; margin-top: 0; }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 0;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #fd5068;
+    }
+  </style>
+</head>
+<body>
+  <h2>Tinder Cleanup</h2>
+  <p class="sub">Extension options</p>
+  <label>
+    <input type="checkbox" id="demoMode" />
+    Demo mode — blur all names &amp; photos (for screen recordings)
+  </label>
+  <script type="module" src="/src/options/index.ts"></script>
+</body>
+</html>

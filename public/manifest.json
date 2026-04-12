@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Tinder Cleanup",
+  "version": "1.0.0",
+  "description": "Mass-unmatch Tinder matches based on configurable rules",
+  "permissions": ["storage", "sidePanel", "tabs"],
+  "host_permissions": ["https://api.gotinder.com/*"],
+  "action": {
+    "default_title": "Tinder Cleanup"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://tinder.com/*", "https://www.tinder.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["https://tinder.com/*", "https://www.tinder.com/*"]
+    }
+  ],
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}
