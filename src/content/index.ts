@@ -5,8 +5,18 @@
 
 import type { InjectedMessage } from "../types";
 
+// Check if the extension context is still valid
+function isContextValid(): boolean {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
 // Wrap all sendMessage calls to silently handle "Extension context invalidated"
 function safeSend(message: any) {
+  if (!isContextValid()) return;
   try {
     chrome.runtime.sendMessage(message).catch(() => {});
   } catch {
@@ -16,11 +26,15 @@ function safeSend(message: any) {
 
 // Inject the page-level fetch interceptor
 function injectScript() {
-  const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("injected.js");
-  script.type = "module";
-  (document.head || document.documentElement).appendChild(script);
-  script.onload = () => script.remove();
+  try {
+    const script = document.createElement("script");
+    script.src = chrome.runtime.getURL("injected.js");
+    script.type = "module";
+    (document.head || document.documentElement).appendChild(script);
+    script.onload = () => script.remove();
+  } catch {
+    // Context invalidated
+  }
 }
 
 injectScript();
@@ -28,8 +42,9 @@ injectScript();
 // Listen for messages from the injected script
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
-  const data = event.data;
+  if (!isContextValid()) return;
 
+  const data = event.data;
   if (data?.source !== "tinder-cleanup-injected") return;
 
   if (data.type === "ALIVE") {
