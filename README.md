@@ -8,7 +8,7 @@ Chrome extension to mass-unmatch Tinder matches based on configurable rules.
 
 ## Features
 
-- **Passive data capture** — reads match data from Tinder's own API responses, no extra API calls
+- **Passive data capture** — reads match data from Tinder's own API responses as you browse
 - **Filter rules** (combine with AND logic):
   - Match older than X days
   - Inactive for X days
@@ -46,9 +46,9 @@ Then go to `chrome://extensions` → Enable "Developer mode" → "Load unpacked"
 
 ## Architecture
 
-- **Injected script** — monkey-patches `window.fetch` in the page context to intercept Tinder API responses and capture auth headers
-- **Content script** — injects the page script via `<script>` tag, relays data to the background service worker
-- **Background service worker** — stores matches, evaluates filter rules, executes unmatches with staggered delays
+- **Injected script** — monkey-patches `window.fetch` in the page context to intercept Tinder API responses, capture auth headers, and execute proxied API calls (browse + unmatch) so requests are indistinguishable from Tinder's own code
+- **Content script** — injects the page script via `<script>` tag, bridges messages bidirectionally between the injected script and background service worker
+- **Background service worker** — stores matches, evaluates filter rules, orchestrates unmatch sessions with staggered delays
 - **Side panel (Vue 3 + Quasar)** — rule builder, preview list, execution controls, session log
 
 ## Tech stack
