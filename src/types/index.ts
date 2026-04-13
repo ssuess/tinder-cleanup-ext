@@ -126,6 +126,6 @@ export const DEFAULT_CONFIG: UserConfig = {
     empty: false,
   },
   minDelaySeconds: 30,
-  maxDelaySeconds: 90,
+  maxDelaySeconds: 45,
   maxUnmatchesPerSession: 12,
 };
