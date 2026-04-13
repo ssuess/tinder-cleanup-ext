@@ -4,11 +4,15 @@
  * Also captures auth headers from outgoing requests for replay.
  */
 
-import type { MatchData, InjectedMessage } from "../types";
+import type { MatchData, InjectedMessage, ProxyResult } from "../types";
 
 const TINDER_API = "https://api.gotinder.com";
 
 const originalFetch = window.fetch;
+
+// Local header storage for proxy requests
+let storedAuthToken: string | null = null;
+let storedHeaders: Record<string, string> = {};
 
 window.fetch = async function (...args: Parameters<typeof fetch>) {
   const request = args[0];
@@ -75,6 +79,9 @@ function captureAuthHeaders(input: RequestInfo | URL, init?: RequestInit) {
     headers["X-AUTH-TOKEN"];
 
   if (token) {
+    storedAuthToken = token;
+    storedHeaders = { ...headers };
+
     window.postMessage(
       { source: "tinder-cleanup-injected", type: "AUTH_TOKEN", token, headers },
       "*"
@@ -196,6 +203,92 @@ function postMatches(matches: MatchData[]) {
   };
   window.postMessage(msg, "*");
 }
+
+// ── Proxy command handling ──────────────────────────────────────────────────
+
+function buildProxyHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(storedHeaders)) {
+    headers[key] = value;
+  }
+  if (storedAuthToken) {
+    headers["X-Auth-Token"] = storedAuthToken;
+  }
+  return headers;
+}
+
+async function executeBrowse(matchId: string): Promise<ProxyResult> {
+  if (!storedAuthToken) {
+    return { requestId: "", ok: false, error: "No auth token captured yet" };
+  }
+  const response = await originalFetch.call(
+    window,
+    `${TINDER_API}/v2/matches/${matchId}/messages?locale=en&count=100`,
+    { method: "GET", headers: buildProxyHeaders() }
+  );
+  return {
+    requestId: "",
+    ok: response.ok,
+    status: response.status,
+    error: response.ok ? undefined : `Browse failed: ${response.status} ${response.statusText}`,
+  };
+}
+
+async function executeUnmatchRequest(matchId: string): Promise<ProxyResult> {
+  if (!storedAuthToken) {
+    return { requestId: "", ok: false, error: "No auth token captured yet" };
+  }
+  const response = await originalFetch.call(
+    window,
+    `${TINDER_API}/user/matches/${matchId}?locale=en`,
+    { method: "DELETE", headers: buildProxyHeaders() }
+  );
+  return {
+    requestId: "",
+    ok: response.ok,
+    status: response.status,
+    error: response.ok ? undefined : `Unmatch failed: ${response.status} ${response.statusText}`,
+  };
+}
+
+function postProxyResult(requestId: string, result: ProxyResult) {
+  window.postMessage(
+    {
+      source: "tinder-cleanup-injected",
+      type: "PROXY_RESULT",
+      result: { ...result, requestId },
+    },
+    "*"
+  );
+}
+
+// Listen for proxy commands from content script
+window.addEventListener("message", async (event) => {
+  if (event.source !== window) return;
+  const data = event.data;
+  if (data?.source !== "tinder-cleanup-content") return;
+
+  const command = data.command;
+  if (!command?.requestId) return;
+
+  try {
+    let result: ProxyResult;
+    if (command.type === "PROXY_BROWSE") {
+      result = await executeBrowse(command.matchId);
+    } else if (command.type === "PROXY_UNMATCH") {
+      result = await executeUnmatchRequest(command.matchId);
+    } else {
+      return;
+    }
+    postProxyResult(command.requestId, result);
+  } catch (err: any) {
+    postProxyResult(command.requestId, {
+      requestId: command.requestId,
+      ok: false,
+      error: err.message ?? String(err),
+    });
+  }
+});
 
 window.postMessage(
   { source: "tinder-cleanup-injected", type: "ALIVE" },

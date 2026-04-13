@@ -157,6 +157,12 @@
                 size="sm"
                 @click="saveConfig"
               />
+              <q-banner v-if="delayWarning" dense rounded class="bg-amber-1 text-amber-10 text-caption q-mt-sm">
+                <template v-slot:avatar>
+                  <q-icon name="warning" color="amber-8" size="xs" />
+                </template>
+                {{ delayWarning }}
+              </q-banner>
             </q-card-section>
           </q-card>
         </q-expansion-item>
@@ -409,6 +415,14 @@ const ruleWarning = computed(() => {
   const r = config.value.rules;
   if (r.empty && r.noResponseDays != null) {
     return "No reply + Empty conflict: No reply requires you sent a message, but Empty means zero messages total.";
+  }
+  return null;
+});
+
+const delayWarning = computed(() => {
+  const { minDelaySeconds, maxDelaySeconds } = config.value;
+  if (minDelaySeconds < 30 || maxDelaySeconds < 30) {
+    return "Delays under 30 seconds may trigger Tinder's rate limiting and get your account blocked.";
   }
   return null;
 });

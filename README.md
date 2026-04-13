@@ -23,6 +23,10 @@ Chrome extension to mass-unmatch Tinder matches based on configurable rules.
 
 ## Important
 
+**Keep the Tinder tab in the foreground while the extension is running.** The tab must be the active tab in its browser window — it's fine to work in other apps, but don't switch to a different tab in the same window and don't minimize the browser. Running in a background tab may trigger Tinder's automation detection and result in your account being temporarily blocked.
+
+**Don't lower the delay settings below the defaults (30–90 seconds).** Shorter delays increase the chance that Tinder flags your account for unusual activity. The extension will warn you if you set delays below 30 seconds. The hard minimum is 10 seconds.
+
 The extension can only see matches that Tinder has loaded in your browser. To include older matches, scroll down through your match list on tinder.com before running a preview.
 
 ## Install from Chrome Web Store

@@ -11,6 +11,8 @@ import type {
   SessionState,
   UnmatchQueueItem,
   Message,
+  ProxyCommand,
+  ProxyResult,
 } from "../types";
 import { DEFAULT_CONFIG } from "../types";
 
@@ -19,8 +21,7 @@ import { DEFAULT_CONFIG } from "../types";
 let contentScriptAliveAt: number | null = null;
 const ALIVE_TIMEOUT_MS = 60_000;
 
-let authToken: string | null = null;
-let capturedHeaders: Record<string, string> = {};
+let tinderTabId: number | null = null;
 
 let session: SessionState = {
   running: false,
@@ -168,37 +169,77 @@ async function evaluateRules(rules: FilterRule): Promise<PreviewMatch[]> {
   return results;
 }
 
+// ── Proxy command helpers ───────────────────────────────────────────────────
+
+const PROXY_TIMEOUT_MS = 15_000;
+
+function generateRequestId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function sendProxyCommand(command: ProxyCommand): Promise<ProxyResult> {
+  return new Promise((resolve, reject) => {
+    if (!tinderTabId) {
+      reject(new Error("No Tinder tab detected — browse Tinder first"));
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      reject(new Error(`Proxy command ${command.type} timed out after ${PROXY_TIMEOUT_MS / 1000}s`));
+    }, PROXY_TIMEOUT_MS);
+
+    chrome.tabs.sendMessage(
+      tinderTabId,
+      { type: command.type, payload: { requestId: command.requestId, matchId: command.matchId } },
+      (response) => {
+        clearTimeout(timer);
+        if (chrome.runtime.lastError) {
+          reject(new Error(`Proxy send failed: ${chrome.runtime.lastError.message}`));
+          return;
+        }
+        resolve(response as ProxyResult);
+      }
+    );
+  });
+}
+
 // ── Unmatch executor ────────────────────────────────────────────────────────
 
+async function browseMatch(matchId: string): Promise<void> {
+  const result = await sendProxyCommand({
+    type: "PROXY_BROWSE",
+    requestId: generateRequestId(),
+    matchId,
+  });
+  if (!result.ok) {
+    throw new Error(result.error ?? `Browse failed with status ${result.status}`);
+  }
+}
+
+function randomBrowseDelay(): Promise<void> {
+  // Simulate a human scanning the conversation: 2-6 seconds
+  const ms = (2 + Math.random() * 4) * 1000;
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function executeUnmatch(matchId: string): Promise<void> {
-  if (!authToken) {
+  if (!tinderTabId) {
     throw new Error(
-      "No auth token captured — browse Tinder to capture a session first"
+      "No Tinder tab detected — open Tinder and browse your matches first"
     );
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "X-Auth-Token": authToken,
-  };
+  // Simulate natural browsing: open conversation, read it, then unmatch
+  await browseMatch(matchId);
+  await randomBrowseDelay();
 
-  for (const key of [
-    "app-session-id", "app-session-time-elapsed",
-    "platform", "app-version", "User-Agent",
-  ]) {
-    const val = capturedHeaders[key] || capturedHeaders[key.toLowerCase()];
-    if (val) headers[key] = val;
-  }
-
-  const response = await fetch(
-    `https://api.gotinder.com/user/matches/${matchId}?locale=en`,
-    { method: "DELETE", headers }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Unmatch failed: ${response.status} ${response.statusText}`
-    );
+  const result = await sendProxyCommand({
+    type: "PROXY_UNMATCH",
+    requestId: generateRequestId(),
+    matchId,
+  });
+  if (!result.ok) {
+    throw new Error(result.error ?? `Unmatch failed with status ${result.status}`);
   }
 
   const stored = await getMatches();
@@ -206,8 +247,12 @@ async function executeUnmatch(matchId: string): Promise<void> {
   await saveMatches(stored);
 }
 
+const MIN_SAFE_DELAY_SECONDS = 10;
+
 function getRandomDelay(min: number, max: number): number {
-  return (min + Math.random() * (max - min)) * 1000;
+  const safeMin = Math.max(min, MIN_SAFE_DELAY_SECONDS);
+  const safeMax = Math.max(max, safeMin);
+  return (safeMin + Math.random() * (safeMax - safeMin)) * 1000;
 }
 
 async function processQueue() {
@@ -276,21 +321,19 @@ function stopUnmatchSession() {
 // ── Message handler ─────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
-  (message: Message, _sender, sendResponse) => {
-    handleMessage(message).then(sendResponse);
+  (message: Message, sender, sendResponse) => {
+    handleMessage(message, sender).then(sendResponse);
     return true;
   }
 );
 
-async function handleMessage(message: Message): Promise<any> {
+async function handleMessage(message: Message, sender?: chrome.runtime.MessageSender): Promise<any> {
   switch (message.type) {
     case "MATCH_DATA":
       enqueueIngestion(message.payload);
       return { ok: true };
 
     case "AUTH_TOKEN":
-      authToken = message.payload.token;
-      capturedHeaders = message.payload.headers;
       return { ok: true };
 
     case "MATCH_DELETED": {
@@ -316,6 +359,9 @@ async function handleMessage(message: Message): Promise<any> {
 
     case "CONTENT_SCRIPT_ALIVE":
       contentScriptAliveAt = Date.now();
+      if (sender?.tab?.id) {
+        tinderTabId = sender.tab.id;
+      }
       return { ok: true };
 
     case "GET_STATUS": {
@@ -346,9 +392,9 @@ async function handleMessage(message: Message): Promise<any> {
     }
 
     case "EXECUTE_UNMATCH": {
-      if (!authToken) {
+      if (!tinderTabId) {
         return {
-          error: "No auth token — open Tinder and browse your matches first",
+          error: "No Tinder tab detected — open Tinder and browse your matches first",
         };
       }
       startUnmatchSession(message.payload.matchInfo ?? message.payload.matchIds.map(

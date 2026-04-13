@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Tinder Cleanup",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Mass-unmatch Tinder matches based on configurable rules",
   "permissions": ["storage", "sidePanel", "tabs"],
-  "host_permissions": ["https://api.gotinder.com/*"],
   "action": {
     "default_title": "Tinder Cleanup"
   },

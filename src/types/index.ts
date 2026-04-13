@@ -57,6 +57,25 @@ export interface SessionState {
   startedAt: string | null;
 }
 
+/** Proxy command sent from background -> content -> injected */
+export type ProxyCommand =
+  | { type: "PROXY_BROWSE"; requestId: string; matchId: string }
+  | { type: "PROXY_UNMATCH"; requestId: string; matchId: string };
+
+/** Result of a proxied API call, sent from injected -> content -> background */
+export interface ProxyResult {
+  requestId: string;
+  ok: boolean;
+  status?: number;
+  error?: string;
+}
+
+/** Message posted from content script to injected script via window.postMessage */
+export interface ContentCommand {
+  source: "tinder-cleanup-content";
+  command: ProxyCommand;
+}
+
 /** Messages between content script, background, and popup */
 export type Message =
   | { type: "MATCH_DATA"; payload: MatchData[] }
@@ -86,7 +105,9 @@ export type Message =
   | { type: "CONFIG_RESULT"; payload: UserConfig }
   | { type: "SAVE_CONFIG"; payload: UserConfig }
   | { type: "GET_SESSION_LOG"; payload?: undefined }
-  | { type: "SESSION_LOG_RESULT"; payload: UnmatchQueueItem[] };
+  | { type: "SESSION_LOG_RESULT"; payload: UnmatchQueueItem[] }
+  | { type: "PROXY_BROWSE"; payload: { requestId: string; matchId: string } }
+  | { type: "PROXY_UNMATCH"; payload: { requestId: string; matchId: string } };
 
 /** Message posted from injected script to content script via window.postMessage */
 export interface InjectedMessage {
