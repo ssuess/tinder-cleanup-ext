@@ -90,22 +90,6 @@
               <span class="text-body2">days</span>
             </div>
 
-            <!-- Fewer than X messages -->
-            <div class="row items-center no-wrap q-gutter-sm">
-              <q-checkbox v-model="fewerThanEnabled" dense size="sm" />
-              <span class="text-body2">Fewer than</span>
-              <q-input
-                v-model.number="config.rules.fewerThanMessages"
-                type="number"
-                dense
-                outlined
-                style="width: 70px"
-                :disable="!fewerThanEnabled"
-                :min="1"
-              />
-              <span class="text-body2">messages</span>
-            </div>
-
             <!-- Empty -->
             <div class="row items-center no-wrap q-gutter-sm">
               <q-checkbox v-model="config.rules.empty" dense size="sm" />
@@ -421,7 +405,6 @@ const executeError = ref<string | null>(null);
 const matchAgeEnabled = ref(false);
 const inactiveEnabled = ref(false);
 const noResponseEnabled = ref(false);
-const fewerThanEnabled = ref(false);
 
 // Sync checkboxes with config
 watch(matchAgeEnabled, (v) => {
@@ -439,19 +422,10 @@ watch(noResponseEnabled, (v) => {
   else if (config.value.rules.noResponseDays == null)
     config.value.rules.noResponseDays = 7;
 });
-watch(fewerThanEnabled, (v) => {
-  if (!v) config.value.rules.fewerThanMessages = null;
-  else if (config.value.rules.fewerThanMessages == null)
-    config.value.rules.fewerThanMessages = 5;
-});
-
 const ruleWarning = computed(() => {
   const r = config.value.rules;
   if (r.empty && r.noResponseDays != null) {
     return "No reply + Empty conflict: No reply requires you sent a message, but Empty means zero messages total.";
-  }
-  if (r.empty && r.fewerThanMessages != null) {
-    return "Fewer than + Empty conflict: Empty is already a subset of fewer than X messages.";
   }
   return null;
 });
@@ -523,7 +497,6 @@ async function loadConfig() {
     matchAgeEnabled.value = config.value.rules.matchOlderThanDays != null;
     inactiveEnabled.value = config.value.rules.inactiveDays != null;
     noResponseEnabled.value = config.value.rules.noResponseDays != null;
-    fewerThanEnabled.value = config.value.rules.fewerThanMessages != null;
   }
 }
 

@@ -137,14 +137,6 @@ function getMatchedRules(match: MatchData, rules: FilterRule): string[] {
     }
   }
 
-  if (rules.fewerThanMessages != null) {
-    if (match.messageCount < rules.fewerThanMessages) {
-      passed.push(`${match.messageCount} msgs (<${rules.fewerThanMessages})`);
-    } else {
-      failed.push(true);
-    }
-  }
-
   if (rules.empty) {
     if (match.messageCount === 0) {
       passed.push("Empty (0 messages)");

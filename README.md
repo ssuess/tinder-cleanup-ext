@@ -13,7 +13,6 @@ Chrome extension to mass-unmatch Tinder matches based on configurable rules.
   - Match older than X days
   - Inactive for X days
   - No reply in X days (you sent the last message)
-  - Fewer than X messages
   - Empty — zero messages exchanged
 - **Preview before deleting** — see who will be unmatched with names, photos, match dates, and which rules triggered
 - **Selective unmatching** — checkboxes to deselect anyone you want to keep
@@ -22,6 +21,10 @@ Chrome extension to mass-unmatch Tinder matches based on configurable rules.
 - **Session limits** to prevent accidental mass-deletion (configurable)
 - **Page-context requests** — all API calls run through Tinder's own page context with real browser headers, cookies, and session data, so they're indistinguishable from normal usage
 - **Side panel UI** — stays open alongside Tinder for easy workflow
+
+## Disclaimer
+
+**Use this extension at your own risk.** Unmatching is permanent and cannot be undone. The extension relies on data from Tinder's API, which may be incomplete or inaccurate. Matches may be incorrectly deleted. The authors accept no responsibility for lost matches, blocked accounts, or any other consequences of using this extension.
 
 ## Important
 

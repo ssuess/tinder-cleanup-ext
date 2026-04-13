@@ -21,8 +21,6 @@ export interface FilterRule {
   inactiveDays: number | null;
   /** I sent last message more than X days ago (no response) */
   noResponseDays: number | null;
-  /** Fewer than X messages in the conversation */
-  fewerThanMessages: number | null;
   /** Zero messages exchanged */
   empty: boolean;
 }
@@ -122,7 +120,6 @@ export const DEFAULT_CONFIG: UserConfig = {
     matchOlderThanDays: null,
     inactiveDays: null,
     noResponseDays: null,
-    fewerThanMessages: null,
     empty: false,
   },
   minDelaySeconds: 30,
