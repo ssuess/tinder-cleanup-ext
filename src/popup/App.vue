@@ -1,7 +1,7 @@
 <template>
   <q-layout style="min-width: 320px">
     <q-page-container>
-      <q-page padding class="q-gutter-sm">
+      <q-page padding class="q-gutter-sm page-flex">
         <!-- Header -->
         <div class="row items-center q-mb-sm">
           <div class="text-h6 text-weight-bold" style="color: #fd5068">
@@ -246,8 +246,11 @@
             />
             <div class="text-caption text-grey-7">
               {{ completedCount }} / {{ session.queue.length }} processed
-              <template v-if="session.running && completedCount < session.queue.length">
-                — waiting {{ config.minDelaySeconds }}-{{ config.maxDelaySeconds }}s before next unmatch
+              <q-tooltip v-if="session.running && timeEstimate" anchor="top middle" self="bottom middle">
+                Based on your delay settings of {{ config.minDelaySeconds }}–{{ config.maxDelaySeconds }}s, the remaining {{ session.queue.length - completedCount }} unmatches will take between {{ timeEstimate.min }} and {{ timeEstimate.max }} to finish.
+              </q-tooltip>
+              <template v-if="session.running && timeEstimate">
+                — {{ timeEstimate.min }} – {{ timeEstimate.max }} remaining
               </template>
             </div>
           </q-card-section>
@@ -341,11 +344,11 @@
         </q-card>
 
         <!-- Session log -->
-        <q-card v-if="sessionLog.length > 0" flat bordered>
+        <q-card v-if="sessionLog.length > 0" flat bordered class="session-log-card">
           <q-card-section class="q-pb-none">
             <div class="text-subtitle2">Session Log</div>
           </q-card-section>
-          <q-list dense separator style="max-height: 180px; overflow-y: auto">
+          <q-list dense separator class="session-log-list">
             <q-item v-for="entry in sessionLog" :key="entry.matchId">
               <q-item-section avatar>
                 <q-icon
@@ -452,6 +455,28 @@ const ruleWarning = computed(() => {
   }
   return null;
 });
+
+const timeEstimate = computed(() => {
+  const remaining = session.value.queue.length - completedCount.value;
+  if (remaining <= 0) return null;
+  // Each unmatch takes: browse delay (2-6s) + inter-unmatch delay (min-max)
+  const browseAvg = 4;
+  const minPerItem = config.value.minDelaySeconds + browseAvg;
+  const maxPerItem = config.value.maxDelaySeconds + browseAvg;
+  const minTotal = remaining * minPerItem;
+  const maxTotal = remaining * maxPerItem;
+  return { min: formatDuration(minTotal), max: formatDuration(maxTotal) };
+});
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const remainMins = mins % 60;
+  return remainMins > 0 ? `${hrs}h ${remainMins}m` : `${hrs}h`;
+}
 
 const delayWarning = computed(() => {
   const { minDelaySeconds, maxDelaySeconds } = config.value;
@@ -621,9 +646,27 @@ html, body {
   min-width: 320px;
 }
 
+.page-flex {
+  display: flex;
+  flex-direction: column;
+}
+
 .preview-list {
   max-height: calc(100vh - 500px);
   min-height: 100px;
+  overflow-y: auto;
+}
+
+.session-log-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.session-log-list {
+  flex: 1;
+  min-height: 60px;
   overflow-y: auto;
 }
 
