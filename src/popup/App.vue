@@ -90,6 +90,22 @@
               <span class="text-body2">days</span>
             </div>
 
+            <!-- Fewer than X messages -->
+            <div class="row items-center no-wrap q-gutter-sm">
+              <q-checkbox v-model="fewerThanEnabled" dense size="sm" />
+              <span class="text-body2">Fewer than</span>
+              <q-input
+                v-model.number="config.rules.fewerThanMessages"
+                type="number"
+                dense
+                outlined
+                style="width: 70px"
+                :disable="!fewerThanEnabled"
+                :min="1"
+              />
+              <span class="text-body2">messages</span>
+            </div>
+
             <!-- Empty -->
             <div class="row items-center no-wrap q-gutter-sm">
               <q-checkbox v-model="config.rules.empty" dense size="sm" />
@@ -199,6 +215,14 @@
             @click="stop"
           />
         </div>
+
+        <!-- Execute error -->
+        <q-banner v-if="executeError" dense rounded class="bg-red-1 text-red-10 text-caption">
+          <template v-slot:avatar>
+            <q-icon name="error" color="red-8" size="xs" />
+          </template>
+          {{ executeError }}
+        </q-banner>
 
         <!-- Progress -->
         <q-card v-if="session.running || session.queue.length > 0" flat bordered>
@@ -388,11 +412,13 @@ const previewing = ref(false);
 const previewRan = ref(false);
 const refreshing = ref(false);
 const selectedIds = ref(new Set<string>());
+const executeError = ref<string | null>(null);
 
 // Checkbox toggles for optional numeric fields
 const matchAgeEnabled = ref(false);
 const inactiveEnabled = ref(false);
 const noResponseEnabled = ref(false);
+const fewerThanEnabled = ref(false);
 
 // Sync checkboxes with config
 watch(matchAgeEnabled, (v) => {
@@ -410,11 +436,19 @@ watch(noResponseEnabled, (v) => {
   else if (config.value.rules.noResponseDays == null)
     config.value.rules.noResponseDays = 7;
 });
+watch(fewerThanEnabled, (v) => {
+  if (!v) config.value.rules.fewerThanMessages = null;
+  else if (config.value.rules.fewerThanMessages == null)
+    config.value.rules.fewerThanMessages = 5;
+});
 
 const ruleWarning = computed(() => {
   const r = config.value.rules;
   if (r.empty && r.noResponseDays != null) {
     return "No reply + Empty conflict: No reply requires you sent a message, but Empty means zero messages total.";
+  }
+  if (r.empty && r.fewerThanMessages != null) {
+    return "Fewer than + Empty conflict: Empty is already a subset of fewer than X messages.";
   }
   return null;
 });
@@ -464,6 +498,7 @@ async function loadConfig() {
     matchAgeEnabled.value = config.value.rules.matchOlderThanDays != null;
     inactiveEnabled.value = config.value.rules.inactiveDays != null;
     noResponseEnabled.value = config.value.rules.noResponseDays != null;
+    fewerThanEnabled.value = config.value.rules.fewerThanMessages != null;
   }
 }
 
@@ -474,6 +509,7 @@ async function saveConfig() {
 async function preview() {
   previewing.value = true;
   previewRan.value = false;
+  executeError.value = null;
   selectedIds.value = new Set();
   await saveConfig();
   const res = await send({ type: "PREVIEW_RULES", payload: config.value.rules });
@@ -508,7 +544,12 @@ async function execute() {
   const matchInfo = previewMatches.value
     .filter((m) => selectedIds.value.has(m.matchId))
     .map((m) => ({ matchId: m.matchId, personName: m.personName, personPhotoUrl: m.personPhotoUrl }));
-  await send({ type: "EXECUTE_UNMATCH", payload: { matchIds: ids, matchInfo } });
+  const res = await send({ type: "EXECUTE_UNMATCH", payload: { matchIds: ids, matchInfo } });
+  if (res?.error) {
+    executeError.value = res.error;
+    return;
+  }
+  executeError.value = null;
   previewMatches.value = [];
   selectedIds.value = new Set();
   await refreshStatus();
