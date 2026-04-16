@@ -36,7 +36,7 @@ The extension can only see matches that Tinder has loaded in your browser. To in
 
 ## Install from Chrome Web Store
 
-Coming soon.
+https://chromewebstore.google.com/detail/tinder-cleanup/gfaomlmknplfampcbjpoiddjmhpknidn?authuser=0&hl=en
 
 ## Install from source
 
